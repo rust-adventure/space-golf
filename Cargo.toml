@@ -1,0 +1,21 @@
+[package]
+name = "space-golf"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.8.1"
+bevy-inspector-egui = "0.12.1"
+bevy_mouse_tracking_plugin = "0.3.1"
+bevy_rapier2d = "0.16.2"
+particular = "0.1.6"
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
