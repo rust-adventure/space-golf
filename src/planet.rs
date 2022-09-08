@@ -34,6 +34,19 @@ fn setup(
         .spawn()
         .insert_bundle(MaterialMeshBundle {
             mesh: meshes.add(Mesh::from(PlanetMesh {
+                resolution: 10,
+            })),
+            transform: Transform::from_xyz(-2.0, 0.5, 0.0),
+            material: materials.add(Planet3dMaterial {
+                color: Color::RED,
+            }),
+            ..default()
+        })
+        .insert(Wireframe);
+    commands
+        .spawn()
+        .insert_bundle(MaterialMeshBundle {
+            mesh: meshes.add(Mesh::from(PlanetMesh {
                 resolution: 20,
             })),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
@@ -43,7 +56,19 @@ fn setup(
             ..default()
         })
         .insert(Wireframe);
-
+    commands
+        .spawn()
+        .insert_bundle(MaterialMeshBundle {
+            mesh: meshes.add(Mesh::from(PlanetMesh {
+                resolution: 40,
+            })),
+            transform: Transform::from_xyz(2.0, 0.5, 0.0),
+            material: materials.add(Planet3dMaterial {
+                color: Color::RED,
+            }),
+            ..default()
+        })
+        .insert(Wireframe);
     // camera
     commands.spawn_bundle(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0)
