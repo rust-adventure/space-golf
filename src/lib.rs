@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use particular::{prelude::*, ParticleSet};
 
 pub mod golf_ball;
+pub mod planet;
 
 #[derive(Particle)]
 pub struct Body {

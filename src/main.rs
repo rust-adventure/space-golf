@@ -18,6 +18,7 @@ use space_golf::{
     golf_ball::{
         CircleWithGravity, GolfBallSettings, PointMass,
     },
+    planet::PlanetPlugin,
     Body,
 };
 
@@ -39,6 +40,7 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(MousePosPlugin::SingleCamera)
         .add_plugin(WorldInspectorPlugin::new())
+        // .add_plugin(PlanetPlugin)
         .add_startup_system(setup)
         .add_system(place_body)
         .add_system_set_to_stage(
