@@ -43,32 +43,32 @@ fn setup(
             ..default()
         })
         .insert(Wireframe);
-    commands
-        .spawn()
-        .insert_bundle(MaterialMeshBundle {
-            mesh: meshes.add(Mesh::from(PlanetMesh {
-                resolution: 20,
-            })),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
-            material: materials.add(Planet3dMaterial {
-                color: Color::RED,
-            }),
-            ..default()
-        })
-        .insert(Wireframe);
-    commands
-        .spawn()
-        .insert_bundle(MaterialMeshBundle {
-            mesh: meshes.add(Mesh::from(PlanetMesh {
-                resolution: 40,
-            })),
-            transform: Transform::from_xyz(2.0, 0.5, 0.0),
-            material: materials.add(Planet3dMaterial {
-                color: Color::RED,
-            }),
-            ..default()
-        })
-        .insert(Wireframe);
+    // commands
+    //     .spawn()
+    //     .insert_bundle(MaterialMeshBundle {
+    //         mesh: meshes.add(Mesh::from(PlanetMesh {
+    //             resolution: 20,
+    //         })),
+    //         transform: Transform::from_xyz(0.0, 0.5, 0.0),
+    //         material: materials.add(Planet3dMaterial {
+    //             color: Color::RED,
+    //         }),
+    //         ..default()
+    //     })
+    //     .insert(Wireframe);
+    // commands
+    //     .spawn()
+    //     .insert_bundle(MaterialMeshBundle {
+    //         mesh: meshes.add(Mesh::from(PlanetMesh {
+    //             resolution: 40,
+    //         })),
+    //         transform: Transform::from_xyz(2.0, 0.5, 0.0),
+    //         material: materials.add(Planet3dMaterial {
+    //             color: Color::RED,
+    //         }),
+    //         ..default()
+    //     })
+    //     .insert(Wireframe);
     // camera
     commands.spawn_bundle(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0)
@@ -112,48 +112,57 @@ impl From<PlanetMesh> for Mesh {
             Vec3::NEG_Z,
         ];
 
-        let verts_and_triangles = directions
+        let (vert_lists, triangle_lists): (
+            Vec<Vec<Vec3>>,
+            Vec<Vec<u32>>,
+        ) = directions
             .iter()
             .map(|direction| {
-                face(planet.resolution, *direction)
+                let t = face(planet.resolution, *direction);
+                dbg!(&t.1.len());
+                t
             })
-            .collect::<Vec<(Vec<Vec3>, Vec<u32>)>>();
-        let vertices = &verts_and_triangles
+            .unzip();
+
+        let vertices = vert_lists
             .iter()
-            .flat_map(|(verts, _)| {
-                verts.iter().map(|v| [v.x, v.y, v.z])
-            })
+            .flat_map(|v| v.iter().map(|v| [v.x, v.y, v.z]))
             .collect::<Vec<[f32; 3]>>();
-        let indices = &verts_and_triangles
+
+        let triangle_list = triangle_lists
             .iter()
             .enumerate()
-            .flat_map(|(enum_index, (_, idxs))| {
-                idxs.iter()
-                    .map(|i| {
-                        *i + enum_index as u32
-                            * (planet.resolution
-                                * planet.resolution)
-                    })
-                    .collect::<Vec<u32>>()
+            .flat_map(|(face_id, list)| {
+                // local_face_index indexes go up to resolution^2 - 1.
+                // so the last vertex in a face with a resolution of
+                // 10 is index 99 (100 indices, starting at 0).
+                //
+                // that makes the *index* of the second face's vertices
+                // start at 100 and end at 199.
+                list.iter().map(move |local_idx| {
+                    let num_indices = planet.resolution
+                        * planet.resolution;
+                    local_idx + face_id as u32 * num_indices
+                })
             })
             .collect::<Vec<u32>>();
 
         let mut mesh =
             Mesh::new(PrimitiveTopology::TriangleList);
         mesh.set_indices(Some(Indices::U32(
-            indices.clone(),
+            triangle_list.clone(),
         )));
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
             vertices.clone(),
         );
 
+        // unit sphere means normals are already calculated
+        // because a vertex on a unit sphere is a vector from
+        // the center
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_NORMAL,
-            vertices
-                .iter()
-                .map(|[x, y, z]| [*x, *y, *z])
-                .collect::<Vec<[f32; 3]>>(),
+            vertices.clone(),
         );
         // mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
         // Insert the vertex colors as an attribute
@@ -181,6 +190,10 @@ impl From<PlanetMesh> for Mesh {
     }
 }
 
+/// build one face of the "cubesphere"
+/// resolution is the per-face resolution,
+/// the number of lines, which in turns means
+/// resolution-1 squares per axis on each face
 fn face(
     resolution: u32,
     local_up: Vec3,
@@ -188,19 +201,19 @@ fn face(
     let axis_a = local_up.yzx();
     let axis_b = local_up.cross(axis_a);
 
-    let mut vertices: Vec<Vec3> = (0..(resolution
-        * resolution))
-        .into_iter()
-        .map(|_| Vec3::ZERO)
-        .collect();
+    let mut vertices = Vec::with_capacity(
+        resolution as usize * resolution as usize,
+    );
 
-    let mut triangles: Vec<u32> =
-        (0..((resolution - 1) * (resolution - 1) * 6))
-            .into_iter()
-            .map(|_| 0)
-            .collect();
-
-    let mut tri_index: usize = 0;
+    // a resolution of 10 means 10 lines
+    // which is 9 squares per side,
+    // with 2 triangles per square
+    // 3 vertices per triangle
+    let mut triangles = Vec::with_capacity(
+        (resolution as usize - 1)
+            * (resolution as usize - 1)
+            * 6,
+    );
 
     for y in 0..resolution {
         for x in 0..resolution {
@@ -216,19 +229,18 @@ fn face(
             let point_on_unit_sphere =
                 point_on_unit_cube.normalize();
 
-            vertices[i as usize] = point_on_unit_sphere;
+            vertices.push(point_on_unit_sphere);
 
             if x != resolution - 1 && y != resolution - 1 {
-                triangles[tri_index] = i;
-                triangles[tri_index + 1] =
-                    i + resolution + 1;
-                triangles[tri_index + 2] = i + resolution;
+                // triangle list vertices 1
+                triangles.push(i);
+                triangles.push(i + resolution + 1);
+                triangles.push(i + resolution);
 
-                triangles[tri_index + 3] = i;
-                triangles[tri_index + 4] = i + 1;
-                triangles[tri_index + 5] =
-                    i + resolution + 1;
-                tri_index += 6;
+                // triangle list vertices 2
+                triangles.push(i);
+                triangles.push(i + 1);
+                triangles.push(i + resolution + 1);
             }
         }
     }
