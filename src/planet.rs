@@ -118,9 +118,7 @@ impl From<PlanetMesh> for Mesh {
         ) = directions
             .iter()
             .map(|direction| {
-                let t = face(planet.resolution, *direction);
-                dbg!(&t.1.len());
-                t
+                face(planet.resolution, *direction)
             })
             .unzip();
 
